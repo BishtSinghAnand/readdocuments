@@ -5,6 +5,8 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,11 +19,22 @@ import com.opencsv.bean.CsvToBeanBuilder;
 
 import io.bisht.readerservice.model.User;
 import io.bisht.readerservice.patterns.ReaderCsv;
+import io.bisht.readerservice.patterns.ReaderFactorMethod;
 import io.bisht.readerservice.patterns.ReaderFactory;
 
 @Controller
 public class ReaderController {
 
+	@Autowired
+	ReaderFactorMethod<User> read;
+	
+	@Autowired
+	KafkaTemplate<String, User> kafkaTemplate;
+	@Autowired
+	ReaderController(KafkaTemplate<String, User> kafkaTemplate){
+		this.kafkaTemplate=kafkaTemplate;
+	}
+	
 	 @GetMapping("/")
 	    public String index() {
 	        return "index";
@@ -39,11 +52,14 @@ public class ReaderController {
 	            // parse CSV file to create a list of `User` objects
 	            try (Reader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
 
+	            	
 	                // create csv bean reader
-	            	ReaderFactory red=new ReaderCsv<User>(User.class);
+	            	ReaderFactory<User> red=new ReaderCsv<User>(User.class);
 	            	List<User> users=red.reader(reader);
 	                // TODO: save users in DB?
-
+	            	User user=new User();
+	            	user.setAge(10);
+	            	kafkaTemplate.send("mytopic",user);
 	                // save users list on model
 	                model.addAttribute("users", users);
 	                model.addAttribute("status", true);
